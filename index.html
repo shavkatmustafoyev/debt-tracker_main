@@ -10,7 +10,6 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -36,7 +35,6 @@ button{cursor:pointer;font-family:var(--font-display)}
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
 const {useState,useEffect}=React;
-const {AreaChart,Area,XAxis,YAxis,Tooltip,ResponsiveContainer}=Recharts;
 
 // ============ DATA ============
 const USD_RATE=12500;
@@ -51,7 +49,7 @@ const bankCredits=[
 {id:"uzum5",name:"Uzum Bank #5",color:"#93C5FD",payDay:26,totalSum:2412000,schedule:[{month:"2026-06",amount:603000},{month:"2026-07",amount:603000},{month:"2026-08",amount:603000},{month:"2026-09",amount:603000},{month:"2026-10",amount:603000}]},
 ];
 const personalDebts=[
-{id:"elchin",name:"Elchin",amount:600000,priority:1,mustPayJune:true},
+{id:"elchin",name:"Elchin",amount:1200000,priority:1,mustPayJune:true},
 {id:"bobir",name:"Bobir",amount:821000,priority:2,mustPayJune:true},
 {id:"onam",name:"Onam",amount:2150000,priority:3,mustPayJune:false},
 ];
@@ -88,13 +86,88 @@ return<span style={{fontSize:10,padding:'2px 8px',borderRadius:10,fontWeight:500
 }
 
 // ============ DASHBOARD ============
-function Dashboard({paidCredits,paidPersonal,toggleCredit,togglePersonal,stats,setPage}){
+// ============ MONTH PLAN (manual) ============
+function MonthPlan({month,monthLabel,targets,toggleTarget,addTarget,removeTarget,paidCredits,paidPersonal,paidAd}){
+const[adding,setAdding]=useState(false);
+const[picked,setPicked]=useState(null);
+// Available debts not yet in this month's targets and not fully paid
+const inList=(id,type)=>targets.some(t=>t.id===id&&t.type===type);
+const available=[
+...personalDebts.filter(d=>!paidPersonal[d.id]&&!inList(d.id,'personal')).map(d=>({id:d.id,type:'personal',name:d.name,amount:d.amount,cat:'Inson'})),
+...adDebts.filter(d=>!paidAd[d.id]&&!inList(d.id,'ad')).map(d=>({id:d.id,type:'ad',name:d.name,amount:d.amountUZS,cat:'Ad $'})),
+...bankCredits.flatMap(c=>{const p=c.schedule.find(s=>s.month===month);return(p&&!paidCredits[`${c.id}:${month}`]&&!inList(c.id,'credit'))?[{id:c.id,type:'credit',name:c.name,amount:p.amount,cat:'Kredit'}]:[]}),
+];
+const confirmAdd=(status)=>{if(picked){addTarget(month,{id:picked.id,type:picked.type,status});setPicked(null);setAdding(false)}};
+const catColor=c=>({'Inson':'#FFC542','Ad $':'#60A5FA','Kredit':'#C8F46A'}[c]||'var(--text2)');
+return(<div>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+<span style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em'}}>BU OY UCHUN REJAM</span>
+<button onClick={()=>{setAdding(!adding);setPicked(null)}} style={{background:adding?'var(--bg4)':'var(--accent-dim)',border:`1px solid ${adding?'var(--border2)':'rgba(200,244,106,0.3)'}`,borderRadius:20,padding:'4px 12px',fontSize:12,fontWeight:500,color:adding?'var(--text2)':'var(--accent)',display:'flex',alignItems:'center',gap:5}}>{adding?'✕ Yopish':'+ Qarz qo\u2019shish'}</button>
+</div>
+
+{/* Add flow */}
+{adding&&(<div style={{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:'var(--radius)',padding:'14px',marginBottom:12,animation:'scaleIn 0.2s ease both'}}>
+{!picked?(<div>
+<div style={{fontSize:12,color:'var(--text2)',marginBottom:10}}>Qaysi qarzni qo'shamiz?</div>
+{available.length===0?(<div style={{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'12px'}}>Qo'shadigan qarz qolmadi 🎉</div>):(
+<div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:260,overflowY:'auto'}}>
+{available.map(d=>(<div key={`${d.type}:${d.id}`} onClick={()=>setPicked(d)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--bg4)',borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',cursor:'pointer'}}>
+<div style={{width:7,height:7,borderRadius:'50%',background:catColor(d.cat),flexShrink:0}}/>
+<span style={{flex:1,fontSize:13,color:'var(--text)'}}>{d.name}</span>
+<span style={{fontSize:10,color:catColor(d.cat)}}>{d.cat}</span>
+<span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--text2)'}}>{formatSum(d.amount)}</span>
+</div>))}
+</div>)}
+</div>):(<div>
+<div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,padding:'10px 12px',background:'var(--bg4)',borderRadius:'var(--radius-sm)'}}>
+<span style={{flex:1,fontSize:14,fontWeight:500}}>{picked.name}</span>
+<span style={{fontFamily:'var(--font-mono)',fontSize:13,color:'var(--accent)'}}>{formatSum(picked.amount)}</span>
+</div>
+<div style={{fontSize:12,color:'var(--text2)',marginBottom:10}}>Statusni tanlang:</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+<button onClick={()=>confirmAdd('maqsad')} style={{background:'var(--accent-dim)',border:'1px solid rgba(200,244,106,0.3)',borderRadius:'var(--radius-sm)',padding:'14px',color:'var(--accent)',display:'flex',flexDirection:'column',gap:3,alignItems:'center'}}><span style={{fontSize:18}}>🎯</span><span style={{fontSize:13,fontWeight:600}}>Maqsad</span><span style={{fontSize:10,color:'var(--text3)'}}>Majburiy to'lash</span></button>
+<button onClick={()=>confirmAdd('ixtiyoriy')} style={{background:'var(--bg4)',border:'1px solid var(--border2)',borderRadius:'var(--radius-sm)',padding:'14px',color:'var(--text2)',display:'flex',flexDirection:'column',gap:3,alignItems:'center'}}><span style={{fontSize:18}}>💭</span><span style={{fontSize:13,fontWeight:600}}>Ixtiyoriy</span><span style={{fontSize:10,color:'var(--text3)'}}>Imkon bo'lsa</span></button>
+</div>
+<button onClick={()=>setPicked(null)} style={{marginTop:10,width:'100%',background:'transparent',border:'none',color:'var(--text3)',fontSize:12,padding:'6px'}}>← Orqaga</button>
+</div>)}
+</div>)}
+
+{/* Target list */}
+{targets.length===0&&!adding?(<div style={{background:'var(--bg3)',border:'1px dashed var(--border2)',borderRadius:'var(--radius)',padding:'20px',textAlign:'center'}}>
+<div style={{fontSize:13,color:'var(--text3)'}}>Bu oy uchun hali qarz qo'shilmagan</div>
+<div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>"+ Qarz qo'shish" tugmasini bosing</div>
+</div>):(<div style={{display:'flex',flexDirection:'column',gap:8}}>
+{targets.map((t,i)=>(<div key={`${t.type}:${t.id}`} style={{position:'relative',background:t.paid?'rgba(200,244,106,0.04)':'var(--bg3)',border:`1px solid ${t.paid?'rgba(200,244,106,0.2)':t.status==='maqsad'?'rgba(200,244,106,0.18)':'var(--border)'}`,borderRadius:'var(--radius-sm)',padding:'14px 16px',display:'flex',alignItems:'center',gap:12,animation:`fadeUp 0.3s ease ${i*0.05}s both`}}>
+<div onClick={()=>toggleTarget(t)} style={{width:28,height:28,borderRadius:'50%',flexShrink:0,border:`2px solid ${t.paid?'var(--accent)':t.status==='maqsad'?'var(--accent)':'var(--border2)'}`,background:t.paid?'var(--accent)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>{t.paid&&<span style={{fontSize:13,color:'#0A0A0F',fontWeight:700}}>✓</span>}</div>
+<div onClick={()=>toggleTarget(t)} style={{flex:1,minWidth:0,cursor:'pointer'}}>
+<div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><span style={{fontSize:14,fontWeight:500,color:t.paid?'var(--text2)':'var(--text)',textDecoration:t.paid?'line-through':'none'}}>{t.name}</span>
+<span style={{fontSize:9,padding:'2px 7px',borderRadius:8,fontWeight:500,background:t.status==='maqsad'?'var(--accent-dim)':'var(--bg4)',color:t.status==='maqsad'?'var(--accent)':'var(--text3)'}}>{t.status==='maqsad'?'🎯 MAQSAD':'💭 IXTIYORIY'}</span></div>
+</div>
+<span style={{fontFamily:'var(--font-mono)',fontSize:13,fontWeight:500,color:t.paid?'var(--accent)':'var(--text)'}}>{formatSum(t.amount)}</span>
+<button onClick={()=>removeTarget(month,t.id,t.type)} style={{background:'transparent',border:'none',color:'var(--text3)',fontSize:15,padding:'2px 4px',flexShrink:0}} aria-label="O'chirish">✕</button>
+</div>))}
+</div>)}
+</div>);
+}
+
+function Dashboard({paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget}){
 const month=currentMonth();
 const monthLabel=getMonthLabel(month);
 const monthCredits=bankCredits.flatMap(c=>{const p=c.schedule.find(s=>s.month===month);return p?[{...c,amount:p.amount,paid:!!paidCredits[`${c.id}:${month}`]}]:[]});
-const isJune2026=month==='2026-06';
-const totalThisMonth=monthCredits.reduce((s,c)=>s+c.amount,0)+(isJune2026?personalDebts.filter(d=>d.mustPayJune&&!paidPersonal[d.id]).reduce((s,d)=>s+d.amount,0):0)+(isJune2026?personalDebts.filter(d=>d.mustPayJune&&paidPersonal[d.id]).reduce((s,d)=>s+d.amount,0):0);
-const paidThisMonth=monthCredits.filter(c=>c.paid).reduce((s,c)=>s+c.amount,0)+(isJune2026?personalDebts.filter(d=>d.mustPayJune&&paidPersonal[d.id]).reduce((s,d)=>s+d.amount,0):0);
+const targets=monthTargets[month]||[];
+// resolve each target -> {amount, paid, label}
+const resolveTarget=t=>{
+  if(t.type==='personal'){const d=personalDebts.find(x=>x.id===t.id);return d?{...t,name:d.name,amount:d.amount,paid:!!paidPersonal[d.id]}:null}
+  if(t.type==='ad'){const d=adDebts.find(x=>x.id===t.id);return d?{...t,name:d.name,amount:d.amountUZS,paid:!!paidAd[d.id]}:null}
+  if(t.type==='credit'){const c=bankCredits.find(x=>x.id===t.id);const p=c&&c.schedule.find(s=>s.month===month);return c&&p?{...t,name:c.name,amount:p.amount,paid:!!paidCredits[`${c.id}:${month}`]}:null}
+  return null;
+};
+const resolvedTargets=targets.map(resolveTarget).filter(Boolean);
+const toggleTarget=t=>{if(t.type==='personal')togglePersonal(t.id);else if(t.type==='ad')toggleAd(t.id);else if(t.type==='credit')toggleCredit(t.id,month)};
+// "Maqsad" targets count toward this month's mandatory total
+const goalTargets=resolvedTargets.filter(t=>t.status==='maqsad');
+const totalThisMonth=monthCredits.reduce((s,c)=>s+c.amount,0)+goalTargets.filter(t=>t.type!=='credit').reduce((s,t)=>s+t.amount,0);
+const paidThisMonth=monthCredits.filter(c=>c.paid).reduce((s,c)=>s+c.amount,0)+goalTargets.filter(t=>t.type!=='credit'&&t.paid).reduce((s,t)=>s+t.amount,0);
 const remainingThisMonth=totalThisMonth-paidThisMonth;
 const monthPct=totalThisMonth>0?Math.round((paidThisMonth/totalThisMonth)*100):0;
 return(<div style={{display:'flex',flexDirection:'column',gap:24,animation:'fadeUp 0.4s ease both'}}>
@@ -106,7 +179,7 @@ return(<div style={{display:'flex',flexDirection:'column',gap:24,animation:'fade
 <div><div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}><span style={{fontSize:12,color:'var(--text3)'}}>Oylik progress</span><span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--accent)',fontWeight:500}}>{monthPct}%</span></div>
 <div style={{height:8,background:'var(--bg4)',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',borderRadius:4,background:'linear-gradient(90deg,var(--accent2),var(--accent))',width:`${monthPct}%`,transition:'width 0.6s cubic-bezier(0.4,0,0.2,1)',boxShadow:monthPct>0?'0 0 12px rgba(200,244,106,0.5)':'none'}}/></div></div>
 {monthCredits.length>0&&(<div><div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:12}}>{`BANK KREDITLARI — ${monthLabel}`.toUpperCase()}</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{monthCredits.map((c,i)=><PayRow key={c.id} index={i} label={c.name} sub={`${c.payDay}-sanasida`} amount={formatSum(c.amount)} paid={c.paid} onToggle={()=>toggleCredit(c.id,month)}/>)}</div></div>)}
-{isJune2026&&personalDebts.filter(d=>d.mustPayJune).length>0&&(<div><div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:12}}>BU OY MAJBURIY — INSONLARGA</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{personalDebts.filter(d=>d.mustPayJune).map((d,i)=><PayRow key={d.id} index={i} label={d.name} sub="Majburiy — iyun" amount={formatSum(d.amount)} paid={!!paidPersonal[d.id]} onToggle={()=>togglePersonal(d.id)} urgent/>)}</div></div>)}
+<MonthPlan month={month} monthLabel={monthLabel} targets={resolvedTargets} toggleTarget={toggleTarget} addTarget={addTarget} removeTarget={removeTarget} paidCredits={paidCredits} paidPersonal={paidPersonal} paidAd={paidAd}/>
 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:4}}>
 {[{label:"Barcha kreditlar",icon:'🏦',page:'credits',pct:stats.credit.pct},{label:"Navbat bo'yicha",icon:'⚡',page:'priority',pct:null}].map(it=>(
 <button key={it.page} onClick={()=>setPage(it.page)} style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'16px 14px',display:'flex',flexDirection:'column',gap:6,textAlign:'left',color:'var(--text)',transition:'all 0.2s'}}><span style={{fontSize:20}}>{it.icon}</span><span style={{fontSize:13,fontWeight:500}}>{it.label}</span>{it.pct!==null&&<span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--accent)'}}>{it.pct}% to'landi</span>}</button>))}
@@ -151,7 +224,7 @@ return(<div key={credit.id} style={{background:done?'rgba(200,244,106,0.05)':'va
 function Priority({paidPersonal,paidAd,paidCredits,togglePersonal,toggleAd}){
 const[confetti,setConfetti]=useState(null);
 const allItems=[
-...personalDebts.map(d=>({id:d.id,type:'personal',category:'Insondan qarz',name:d.name,amount:d.amount,paid:!!paidPersonal[d.id],note:d.mustPayJune?'⚠ Iyun majburiy':null})),
+...personalDebts.map(d=>({id:d.id,type:'personal',category:'Insondan qarz',name:d.name,amount:d.amount,paid:!!paidPersonal[d.id],note:null})),
 ...adDebts.map(d=>({id:d.id,type:'ad',category:'Ad account ($)',name:d.name,amount:d.amountUZS,paid:!!paidAd[d.id],note:`$${d.amountUSD} = ${formatSum(d.amountUZS)}`})),
 ...bankCredits.map(c=>({id:c.id,type:'credit',category:'Bank krediti',name:c.name,amount:c.totalSum,paid:c.schedule.every(p=>!!paidCredits[`${c.id}:${p.month}`]),note:`${c.payDay}-sana • ${c.schedule.length} to'lov`,color:c.color})),
 ].sort((a,b)=>a.amount-b.amount);
@@ -197,6 +270,27 @@ return(<div style={{background:'var(--bg3)',border:'1px solid var(--border)',bor
 }
 function DoneBanner({label,emoji}){return(<div style={{background:'rgba(200,244,106,0.08)',border:'1px solid rgba(200,244,106,0.3)',borderRadius:'var(--radius)',padding:'14px 18px',display:'flex',alignItems:'center',gap:12,animation:'scaleIn 0.4s ease both'}}><span style={{fontSize:24}}>{emoji}</span><div><div style={{fontSize:14,fontWeight:600,color:'var(--accent)'}}>{label} — yakunlandi! ✓</div><div style={{fontSize:12,color:'var(--text3)'}}>Bu bo'lim progress bardan o'chirildi</div></div></div>);}
 function milestone(pct){if(pct>=100)return'🎉 Yakunlandi!';if(pct>=75)return'💪 Deyarli yetdik!';if(pct>=50)return"⚡ Yarimdan o'tdik!";if(pct>=25)return'🔥 Yaxshi ketmoqda!';return"🚀 Yo'lga tushdik!";}
+function SvgChart({data}){
+const W=620,H=180,pad={t:10,r:10,b:24,l:34};
+const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+const max=Math.max(1,...data.map(d=>d.paid));
+const n=data.length;
+const x=i=>pad.l+(n<=1?0:(i/(n-1))*cw);
+const y=v=>pad.t+ch-(v/max)*ch;
+const linePts=data.map((d,i)=>`${x(i)},${y(d.paid)}`).join(' ');
+const areaPts=`${pad.l},${pad.t+ch} ${linePts} ${pad.l+cw},${pad.t+ch}`;
+const yTicks=[0,max/2,max];
+return(<div style={{width:'100%',overflow:'hidden'}}>
+<svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto',display:'block'}}>
+<defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#C8F46A" stopOpacity="0.3"/><stop offset="100%" stopColor="#C8F46A" stopOpacity="0"/></linearGradient></defs>
+{yTicks.map((t,i)=>(<g key={i}><line x1={pad.l} y1={y(t)} x2={pad.l+cw} y2={y(t)} stroke="rgba(255,255,255,0.06)" strokeWidth="1"/><text x={pad.l-6} y={y(t)+3} textAnchor="end" fill="#5C5A6A" fontSize="9" fontFamily="var(--font-mono)">{Math.round(t)}</text></g>))}
+<polygon points={areaPts} fill="url(#gp)"/>
+<polyline points={linePts} fill="none" stroke="#C8F46A" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{filter:'drop-shadow(0 0 4px rgba(200,244,106,0.5))'}}/>
+{data.map((d,i)=>d.paid>0&&<circle key={i} cx={x(i)} cy={y(d.paid)} r="2.5" fill="#C8F46A"/>)}
+{data.map((d,i)=>(i%2===0)&&<text key={i} x={x(i)} y={H-8} textAnchor="middle" fill="#5C5A6A" fontSize="9" fontFamily="var(--font-mono)">{d.name.split(' ')[0]}</text>)}
+</svg>
+</div>);
+}
 function Progress({stats,paidCredits}){
 const{overallPct,credit,personal,ad}=stats;
 const months=[];let d=new Date(2026,5,1);for(let i=0;i<12;i++){months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);d.setMonth(d.getMonth()+1)}
@@ -216,7 +310,7 @@ return(<div style={{display:'flex',flexDirection:'column',gap:24,animation:'fade
 {personalDone&&<DoneBanner label="Insonlarga qarzlar" emoji="💛"/>}
 {adDone&&<DoneBanner label="Ad account qarzlar" emoji="🔵"/>}
 <div style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'20px'}}><div style={{fontSize:12,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:16}}>OYLIK TO'LOV GRAFIGI (MLN SO'M)</div>
-<ResponsiveContainer width="100%" height={180}><AreaChart data={chartData} margin={{top:4,right:4,bottom:0,left:-20}}><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#C8F46A" stopOpacity={0.3}/><stop offset="95%" stopColor="#C8F46A" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="name" tick={{fill:'#5C5A6A',fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:'#5C5A6A',fontSize:10}} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12,color:'var(--text)'}} formatter={v=>[`${v} mln`,'']}/><Area type="monotone" dataKey="paid" stroke="#C8F46A" strokeWidth={2} fill="url(#gp)"/></AreaChart></ResponsiveContainer></div>
+<SvgChart data={chartData}/></div>
 <div style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'18px 20px'}}><div style={{fontSize:12,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:14}}>XULOSA</div>{[{label:'Jami qarz (boshida)',val:formatSum(stats.totalDebt),color:'var(--red)'},{label:"To'langan",val:formatSum(stats.totalPaid),color:'var(--accent)'},{label:'Qoldi',val:formatSum(stats.totalRemaining),color:'var(--text)'}].map(row=><div key={row.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid var(--border)'}}><span style={{fontSize:13,color:'var(--text2)'}}>{row.label}</span><span style={{fontFamily:'var(--font-mono)',fontSize:14,fontWeight:600,color:row.color}}>{row.val}</span></div>)}</div>
 </div>);
 }
@@ -228,9 +322,12 @@ const[page,setPage]=useState('dashboard');
 const[paidCredits,setPaidCredits]=useLS('paidCredits',{});
 const[paidPersonal,setPaidPersonal]=useLS('paidPersonal',{});
 const[paidAd,setPaidAd]=useLS('paidAd',{});
+const[monthTargets,setMonthTargets]=useLS('monthTargets',{});
 const toggleCredit=(id,m)=>setPaidCredits(p=>({...p,[`${id}:${m}`]:!p[`${id}:${m}`]}));
 const togglePersonal=id=>setPaidPersonal(p=>({...p,[id]:!p[id]}));
 const toggleAd=id=>setPaidAd(p=>({...p,[id]:!p[id]}));
+const addTarget=(month,item)=>setMonthTargets(p=>{const list=p[month]||[];if(list.some(t=>t.id===item.id&&t.type===item.type))return p;return{...p,[month]:[...list,item]}});
+const removeTarget=(month,id,type)=>setMonthTargets(p=>({...p,[month]:(p[month]||[]).filter(t=>!(t.id===id&&t.type===type))}));
 const totalCreditDebt=bankCredits.reduce((s,c)=>s+c.totalSum,0);
 const paidCreditAmount=bankCredits.reduce((s,c)=>s+c.schedule.reduce((ss,p)=>ss+(paidCredits[`${c.id}:${p.month}`]?p.amount:0),0),0);
 const totalPersonalDebt=personalDebts.reduce((s,d)=>s+d.amount,0);
@@ -240,7 +337,7 @@ const paidAdAmount=adDebts.reduce((s,d)=>s+(paidAd[d.id]?d.amountUZS:0),0);
 const totalDebt=totalCreditDebt+totalPersonalDebt+totalAdDebt;
 const totalPaid=paidCreditAmount+paidPersonalAmount+paidAdAmount;
 const stats={totalDebt,totalPaid,totalRemaining:totalDebt-totalPaid,overallPct:Math.min(100,Math.round((totalPaid/totalDebt)*100)),credit:{total:totalCreditDebt,paid:paidCreditAmount,pct:Math.min(100,Math.round((paidCreditAmount/totalCreditDebt)*100))},personal:{total:totalPersonalDebt,paid:paidPersonalAmount,pct:Math.min(100,Math.round((paidPersonalAmount/totalPersonalDebt)*100))},ad:{total:totalAdDebt,paid:paidAdAmount,pct:Math.min(100,Math.round((paidAdAmount/totalAdDebt)*100))}};
-const sp={paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage};
+const sp={paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget};
 return(<div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
 <header style={{position:'sticky',top:0,zIndex:100,background:'rgba(10,10,15,0.85)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)',padding:'0 20px',display:'flex',alignItems:'center',justifyContent:'space-between',height:56}}>
 <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:20}}>🔓</span><span style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:17,letterSpacing:'0.01em'}}>Qarzdan Ozodlik</span></div>
