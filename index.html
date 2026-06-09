@@ -49,7 +49,7 @@ const bankCredits=[
 {id:"uzum5",name:"Uzum Bank #5",color:"#93C5FD",payDay:26,totalSum:2412000,schedule:[{month:"2026-06",amount:603000},{month:"2026-07",amount:603000},{month:"2026-08",amount:603000},{month:"2026-09",amount:603000},{month:"2026-10",amount:603000}]},
 ];
 const personalDebts=[
-{id:"elchin",name:"Elchin",amount:1200000,priority:1,mustPayJune:true},
+{id:"elchin",name:"Elchin",amount:1800000,priority:1,mustPayJune:true},
 {id:"bobir",name:"Bobir",amount:821000,priority:2,mustPayJune:true},
 {id:"onam",name:"Onam",amount:2150000,priority:3,mustPayJune:false},
 ];
@@ -226,7 +226,7 @@ const[confetti,setConfetti]=useState(null);
 const allItems=[
 ...personalDebts.map(d=>({id:d.id,type:'personal',category:'Insondan qarz',name:d.name,amount:d.amount,paid:!!paidPersonal[d.id],note:null})),
 ...adDebts.map(d=>({id:d.id,type:'ad',category:'Ad account ($)',name:d.name,amount:d.amountUZS,paid:!!paidAd[d.id],note:`$${d.amountUSD} = ${formatSum(d.amountUZS)}`})),
-...bankCredits.map(c=>({id:c.id,type:'credit',category:'Bank krediti',name:c.name,amount:c.totalSum,paid:c.schedule.every(p=>!!paidCredits[`${c.id}:${p.month}`]),note:`${c.payDay}-sana • ${c.schedule.length} to'lov`,color:c.color})),
+...bankCredits.map(c=>{const paidAmt=c.schedule.filter(p=>paidCredits[`${c.id}:${p.month}`]).reduce((s,p)=>s+p.amount,0);const remaining=c.totalSum-paidAmt;const paidCount=c.schedule.filter(p=>paidCredits[`${c.id}:${p.month}`]).length;return{id:c.id,type:'credit',category:'Bank krediti',name:c.name,amount:remaining,paid:remaining<=0,note:paidCount>0?`Qoldiq • ${paidCount}/${c.schedule.length} to'lov to'landi`:`${c.payDay}-sana • ${c.schedule.length} to'lov`,color:c.color}}),
 ].sort((a,b)=>a.amount-b.amount);
 const handleToggle=(id,type)=>{(type==='personal'?togglePersonal:toggleAd)(id);setConfetti(id);setTimeout(()=>setConfetti(null),1200)};
 const items=allItems.map(it=>({...it,onToggle:it.type==='credit'?null:()=>handleToggle(it.id,it.type)}));
