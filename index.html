@@ -150,10 +150,63 @@ return(<div>
 </div>);
 }
 
-function Dashboard({paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget}){
+// ============ MANUAL EDIT (principal + monthly) ============
+const EDITABLE_MONTHLY=['ipak','tbc']; // only these credits allow monthly edit
+function ManualEdit({principalOverride,monthlyOverride,setPrincipal,setMonthly,schedRemaining,principalOf}){
+const[open,setOpen]=useState(false);
+const[sel,setSel]=useState(bankCredits[0].id);
+const[pVal,setPVal]=useState('');
+const[mVal,setMVal]=useState('');
+const credit=bankCredits.find(c=>c.id===sel);
+const sched=schedRemaining(credit);
+const curPrincipal=principalOf(credit);
+const canEditMonthly=EDITABLE_MONTHLY.includes(sel);
+const onSelect=id=>{setSel(id);setPVal('');setMVal('')};
+const saveP=()=>{setPrincipal(sel,pVal===''?null:pVal);setPVal('')};
+const saveM=()=>{setMonthly(sel,mVal===''?null:mVal);setMVal('')};
+const inputStyle={width:'100%',background:'var(--bg4)',border:'1px solid var(--border2)',borderRadius:'var(--radius-sm)',padding:'10px 12px',color:'var(--text)',fontFamily:'var(--font-mono)',fontSize:14,outline:'none'};
+const btnStyle={background:'var(--accent-dim)',border:'1px solid rgba(200,244,106,0.3)',borderRadius:'var(--radius-sm)',padding:'10px 16px',color:'var(--accent)',fontWeight:600,fontSize:13,whiteSpace:'nowrap'};
+return(<div>
+<button onClick={()=>setOpen(!open)} style={{width:'100%',background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'14px 16px',display:'flex',alignItems:'center',gap:12,color:'var(--text)',textAlign:'left'}}>
+<span style={{fontSize:20}}>✎</span>
+<div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>Qo'lda tahrirlash</div><div style={{fontSize:11,color:'var(--text3)'}}>Asos qoldiq va oylik to'lovni o'zgartirish</div></div>
+<span style={{fontSize:12,color:'var(--text3)',transform:open?'rotate(180deg)':'rotate(0)',transition:'transform 0.25s'}}>▾</span>
+</button>
+{open&&(<div style={{background:'var(--bg3)',border:'1px solid var(--border2)',borderTop:'none',borderRadius:'0 0 var(--radius) var(--radius)',padding:'16px',marginTop:-4,animation:'scaleIn 0.2s ease both'}}>
+<div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.06em',marginBottom:8}}>KREDITNI TANLANG</div>
+<div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+{bankCredits.map(c=>(<button key={c.id} onClick={()=>onSelect(c.id)} style={{background:sel===c.id?'var(--accent-dim)':'var(--bg4)',border:`1px solid ${sel===c.id?'rgba(200,244,106,0.4)':'var(--border)'}`,borderRadius:20,padding:'5px 12px',fontSize:12,color:sel===c.id?'var(--accent)':'var(--text2)'}}>{c.name}</button>))}
+</div>
+{/* Current state */}
+<div style={{display:'flex',gap:10,marginBottom:16}}>
+<div style={{flex:1,background:'var(--bg4)',borderRadius:'var(--radius-sm)',padding:'10px 12px'}}><div style={{fontSize:10,color:'var(--text3)',marginBottom:4}}>JADVAL BO'YICHA</div><div style={{fontFamily:'var(--font-mono)',fontSize:13,color:'var(--text2)'}}>{formatSum(sched)}</div></div>
+<div style={{flex:1,background:'var(--accent-dim2)',borderRadius:'var(--radius-sm)',padding:'10px 12px'}}><div style={{fontSize:10,color:'var(--text3)',marginBottom:4}}>HOZIRGI ASOS</div><div style={{fontFamily:'var(--font-mono)',fontSize:13,color:'var(--accent)'}}>{formatSum(curPrincipal)}</div></div>
+</div>
+{/* Principal input */}
+<div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.06em',marginBottom:8}}>ASOS QOLDIQ (REAL QARZ)</div>
+<div style={{display:'flex',gap:8,marginBottom:6}}>
+<input type="number" inputMode="numeric" value={pVal} onChange={e=>setPVal(e.target.value)} placeholder={String(curPrincipal)} style={inputStyle}/>
+<button onClick={saveP} style={btnStyle}>Saqlash</button>
+</div>
+{principalOverride[sel]!=null&&<button onClick={()=>{setPrincipal(sel,null);setPVal('')}} style={{background:'transparent',border:'none',color:'var(--text3)',fontSize:11,padding:'4px 0',marginBottom:8}}>↩ Jadval qiymatiga qaytarish</button>}
+{/* Monthly input — only Ipak & TBC */}
+{canEditMonthly?(<div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
+<div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.06em',marginBottom:8}}>YANGI OYLIK TO'LOV <span style={{color:'var(--accent)'}}>(faqat {credit.name})</span></div>
+<div style={{display:'flex',gap:8}}>
+<input type="number" inputMode="numeric" value={mVal} onChange={e=>setMVal(e.target.value)} placeholder={monthlyOverride[sel]!=null?String(monthlyOverride[sel]):"masalan 500000"} style={inputStyle}/>
+<button onClick={saveM} style={btnStyle}>Saqlash</button>
+</div>
+<div style={{fontSize:11,color:'var(--text3)',marginTop:6}}>Tanaga summa o'tkazgach, qolgan oylar shu summaga o'zgaradi</div>
+{monthlyOverride[sel]!=null&&<button onClick={()=>{setMonthly(sel,null);setMVal('')}} style={{background:'transparent',border:'none',color:'var(--text3)',fontSize:11,padding:'4px 0',marginTop:4}}>↩ Asl oylik to'lovga qaytarish</button>}
+</div>):(<div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)',fontSize:11,color:'var(--text3)'}}>Oylik to'lovni tahrirlash faqat Ipak Yo'li va TBC kreditlari uchun mavjud</div>)}
+</div>)}
+</div>);
+}
+
+function Dashboard({paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget,principalOverride,monthlyOverride,setPrincipal,setMonthly,schedRemaining,principalOf}){
 const month=currentMonth();
 const monthLabel=getMonthLabel(month);
-const monthCredits=bankCredits.flatMap(c=>{const p=c.schedule.find(s=>s.month===month);return p?[{...c,amount:p.amount,paid:!!paidCredits[`${c.id}:${month}`]}]:[]});
+const monthCredits=bankCredits.flatMap(c=>{const p=c.schedule.find(s=>s.month===month);if(!p)return[];const paidThis=!!paidCredits[`${c.id}:${month}`];const ov=monthlyOverride[c.id];const amt=(ov!=null&&!paidThis)?ov:p.amount;return[{...c,amount:amt,paid:paidThis}]});
 const targets=monthTargets[month]||[];
 // resolve each target -> {amount, paid, label}
 const resolveTarget=t=>{
@@ -180,6 +233,7 @@ return(<div style={{display:'flex',flexDirection:'column',gap:24,animation:'fade
 <div style={{height:8,background:'var(--bg4)',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',borderRadius:4,background:'linear-gradient(90deg,var(--accent2),var(--accent))',width:`${monthPct}%`,transition:'width 0.6s cubic-bezier(0.4,0,0.2,1)',boxShadow:monthPct>0?'0 0 12px rgba(200,244,106,0.5)':'none'}}/></div></div>
 {monthCredits.length>0&&(<div><div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:12}}>{`BANK KREDITLARI — ${monthLabel}`.toUpperCase()}</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{monthCredits.map((c,i)=><PayRow key={c.id} index={i} label={c.name} sub={`${c.payDay}-sanasida`} amount={formatSum(c.amount)} paid={c.paid} onToggle={()=>toggleCredit(c.id,month)}/>)}</div></div>)}
 <MonthPlan month={month} monthLabel={monthLabel} targets={resolvedTargets} toggleTarget={toggleTarget} addTarget={addTarget} removeTarget={removeTarget} paidCredits={paidCredits} paidPersonal={paidPersonal} paidAd={paidAd}/>
+<ManualEdit principalOverride={principalOverride} monthlyOverride={monthlyOverride} setPrincipal={setPrincipal} setMonthly={setMonthly} schedRemaining={schedRemaining} principalOf={principalOf}/>
 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:4}}>
 {[{label:"Barcha kreditlar",icon:'🏦',page:'credits',pct:stats.credit.pct},{label:"Navbat bo'yicha",icon:'⚡',page:'priority',pct:null}].map(it=>(
 <button key={it.page} onClick={()=>setPage(it.page)} style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'16px 14px',display:'flex',flexDirection:'column',gap:6,textAlign:'left',color:'var(--text)',transition:'all 0.2s'}}><span style={{fontSize:20}}>{it.icon}</span><span style={{fontSize:13,fontWeight:500}}>{it.label}</span>{it.pct!==null&&<span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--accent)'}}>{it.pct}% to'landi</span>}</button>))}
@@ -221,31 +275,48 @@ return(<div key={credit.id} style={{background:done?'rgba(200,244,106,0.05)':'va
 }
 
 // ============ PRIORITY ============
-function Priority({paidPersonal,paidAd,paidCredits,togglePersonal,toggleAd}){
+function Priority({paidPersonal,paidAd,paidCredits,togglePersonal,toggleAd,principalOverride,schedRemaining,principalOf,pinned,togglePin}){
 const[confetti,setConfetti]=useState(null);
 const allItems=[
-...personalDebts.map(d=>({id:d.id,type:'personal',category:'Insondan qarz',name:d.name,amount:d.amount,paid:!!paidPersonal[d.id],note:null})),
-...adDebts.map(d=>({id:d.id,type:'ad',category:'Ad account ($)',name:d.name,amount:d.amountUZS,paid:!!paidAd[d.id],note:`$${d.amountUSD} = ${formatSum(d.amountUZS)}`})),
-...bankCredits.map(c=>{const paidAmt=c.schedule.filter(p=>paidCredits[`${c.id}:${p.month}`]).reduce((s,p)=>s+p.amount,0);const remaining=c.totalSum-paidAmt;const paidCount=c.schedule.filter(p=>paidCredits[`${c.id}:${p.month}`]).length;return{id:c.id,type:'credit',category:'Bank krediti',name:c.name,amount:remaining,paid:remaining<=0,note:paidCount>0?`Qoldiq • ${paidCount}/${c.schedule.length} to'lov to'landi`:`${c.payDay}-sana • ${c.schedule.length} to'lov`,color:c.color}}),
-].sort((a,b)=>a.amount-b.amount);
+...personalDebts.map(d=>({id:d.id,type:'personal',category:'Insondan qarz',name:d.name,amount:d.amount,full:d.amount,paid:!!paidPersonal[d.id],note:null})),
+...adDebts.map(d=>({id:d.id,type:'ad',category:'Ad account ($)',name:d.name,amount:d.amountUZS,full:d.amountUZS,paid:!!paidAd[d.id],note:`$${d.amountUSD} = ${formatSum(d.amountUZS)}`})),
+...bankCredits.map(c=>{const sched=schedRemaining(c);const principal=principalOf(c);const paidCount=c.schedule.filter(p=>paidCredits[`${c.id}:${p.month}`]).length;const overridden=principalOverride[c.id]!=null;return{id:c.id,type:'credit',category:'Bank krediti',name:c.name,amount:principal,full:sched,savings:sched-principal,overridden,paid:principal<=0,note:paidCount>0?`${paidCount}/${c.schedule.length} to'lov to'landi`:`${c.payDay}-sana • ${c.schedule.length} to'lov`,color:c.color}}),
+];
 const handleToggle=(id,type)=>{(type==='personal'?togglePersonal:toggleAd)(id);setConfetti(id);setTimeout(()=>setConfetti(null),1200)};
 const items=allItems.map(it=>({...it,onToggle:it.type==='credit'?null:()=>handleToggle(it.id,it.type)}));
-const unpaid=items.filter(it=>!it.paid);const paid=items.filter(it=>it.paid);
+const isPinned=it=>pinned&&pinned.id===it.id&&pinned.type===it.type;
+// sort by amount (principal/asos), pinned first
+const sortFn=(a,b)=>{const pa=isPinned(a),pb=isPinned(b);if(pa&&!pb)return -1;if(pb&&!pa)return 1;return a.amount-b.amount};
+const unpaid=items.filter(it=>!it.paid).sort(sortFn);
+const paid=items.filter(it=>it.paid);
+const totalSavings=items.reduce((s,it)=>s+(it.savings>0?it.savings:0),0);
 return(<div style={{animation:'fadeUp 0.4s ease both'}}>
-<div style={{marginBottom:20}}><div style={{fontSize:12,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:6}}>NAVBAT BO'YICHA</div><h1 style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:30,fontWeight:400}}>Kichigidan kattasiga</h1><p style={{fontSize:13,color:'var(--text2)',marginTop:6}}>Pul tushganda — tartib bo'yicha to'lay. Tugagani yo'q bo'ladi.</p></div>
-<div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'14px 18px'}}><div style={{fontFamily:'var(--font-mono)',fontSize:36,fontWeight:500,color:unpaid.length===0?'var(--accent)':'var(--text)',lineHeight:1}}>{unpaid.length}</div><div><div style={{fontSize:14,fontWeight:500}}>ta qarz qoldi</div><div style={{fontSize:12,color:'var(--text3)'}}>{paid.length} ta to'landi</div></div>{unpaid.length===0&&<div style={{marginLeft:'auto',fontSize:28}}>🎉</div>}</div>
+<div style={{marginBottom:20}}><div style={{fontSize:12,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:6}}>NAVBAT BO'YICHA</div><h1 style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:30,fontWeight:400}}>Asos qoldiq bo'yicha</h1><p style={{fontSize:13,color:'var(--text2)',marginTop:6}}>Pul tushganda — tartib bo'yicha to'lay. 📌 bossang — birinchiga chiqadi.</p></div>
+<div style={{display:'flex',alignItems:'center',gap:12,marginBottom:totalSavings>0?12:20,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'14px 18px'}}><div style={{fontFamily:'var(--font-mono)',fontSize:36,fontWeight:500,color:unpaid.length===0?'var(--accent)':'var(--text)',lineHeight:1}}>{unpaid.length}</div><div><div style={{fontSize:14,fontWeight:500}}>ta qarz qoldi</div><div style={{fontSize:12,color:'var(--text3)'}}>{paid.length} ta to'landi</div></div>{unpaid.length===0&&<div style={{marginLeft:'auto',fontSize:28}}>🎉</div>}</div>
+{totalSavings>0&&(<div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20,background:'var(--accent-dim2)',border:'1px solid rgba(200,244,106,0.2)',borderRadius:'var(--radius)',padding:'12px 16px'}}><span style={{fontSize:20}}>⚡</span><div style={{fontSize:13,color:'var(--text2)'}}>Erta yopib <span style={{color:'var(--accent)',fontWeight:600,fontFamily:'var(--font-mono)'}}>{formatSum(totalSavings)}</span> tejayapsan — shoshil!</div></div>)}
 <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:24}}>
-{unpaid.map((item,i)=>{const rank=i+1;const isCredit=item.type==='credit';return(
-<div key={item.id} onClick={isCredit?undefined:item.onToggle} style={{position:'relative',overflow:'hidden',background:rank===1?'rgba(200,244,106,0.06)':'var(--bg3)',border:`1px solid ${rank===1?'rgba(200,244,106,0.25)':'var(--border)'}`,borderRadius:'var(--radius)',padding:'16px 18px',cursor:isCredit?'default':'pointer',transition:'all 0.25s',animation:`fadeUp 0.35s ease ${rank*0.04}s both`}}>
+{unpaid.map((item,i)=>{const rank=i+1;const isCredit=item.type==='credit';const pin=isPinned(item);const hasSavings=item.savings>0;return(
+<div key={`${item.type}:${item.id}`} style={{position:'relative',overflow:'hidden',background:pin?'rgba(200,244,106,0.1)':rank===1?'rgba(200,244,106,0.06)':'var(--bg3)',border:`1px solid ${pin?'rgba(200,244,106,0.5)':rank===1?'rgba(200,244,106,0.25)':'var(--border)'}`,borderRadius:'var(--radius)',padding:'16px 18px',transition:'all 0.25s',animation:`fadeUp 0.35s ease ${rank*0.04}s both`}}>
 {confetti===item.id&&<div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',pointerEvents:'none',zIndex:10}}>{['🎉','✨','🎊','⭐','💚'].map((e,k)=><span key={k} style={{position:'absolute',fontSize:18,animation:`confetti-fall 1s ease forwards`,animationDelay:`${k*0.1}s`,left:`${(k-2)*22}px`}}>{e}</span>)}</div>}
 <div style={{display:'flex',alignItems:'center',gap:14}}>
-<div style={{width:36,height:36,borderRadius:10,flexShrink:0,background:rank===1?'var(--accent-dim)':'var(--bg4)',border:`1px solid ${rank===1?'rgba(200,244,106,0.3)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontSize:14,fontWeight:600,color:rank===1?'var(--accent)':'var(--text3)'}}>{rank}</div>
-<div style={{flex:1,minWidth:0}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4,flexWrap:'wrap'}}><span style={{fontSize:15,fontWeight:600}}>{item.name}</span><CategoryBadge cat={item.category}/>{rank===1&&!isCredit&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:10,background:'var(--accent-dim)',color:'var(--accent)',fontWeight:500}}>NAVBATDAGI</span>}</div>{item.note&&<div style={{fontSize:11,color:'var(--text3)'}}>{item.note}</div>}{isCredit&&<div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>Kreditlar jadvalida belgilang →</div>}</div>
-<div style={{textAlign:'right',flexShrink:0}}><div style={{fontFamily:'var(--font-mono)',fontSize:14,fontWeight:600}}>{formatSum(item.amount)}</div>{!isCredit&&<div style={{marginTop:6,width:28,height:28,borderRadius:'50%',border:'1.5px solid var(--border2)',display:'flex',alignItems:'center',justifyContent:'center',marginLeft:'auto'}}><span style={{fontSize:10,color:'var(--text3)'}}>✓</span></div>}</div>
+<div style={{width:36,height:36,borderRadius:10,flexShrink:0,background:pin||rank===1?'var(--accent-dim)':'var(--bg4)',border:`1px solid ${pin||rank===1?'rgba(200,244,106,0.3)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontSize:14,fontWeight:600,color:pin||rank===1?'var(--accent)':'var(--text3)'}}>{pin?'📌':rank}</div>
+<div onClick={isCredit?undefined:item.onToggle} style={{flex:1,minWidth:0,cursor:isCredit?'default':'pointer'}}>
+<div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4,flexWrap:'wrap'}}><span style={{fontSize:15,fontWeight:600}}>{item.name}</span><CategoryBadge cat={item.category}/>{pin&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:10,background:'var(--accent-dim)',color:'var(--accent)',fontWeight:500}}>ENG AKTUAL</span>}</div>
+{item.note&&<div style={{fontSize:11,color:'var(--text3)'}}>{item.note}</div>}
+{isCredit&&<div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>Kreditlar jadvalida belgilang →</div>}
+</div>
+<div style={{textAlign:'right',flexShrink:0}}>
+<div style={{fontFamily:'var(--font-mono)',fontSize:15,fontWeight:600,color:item.overridden?'var(--accent)':'var(--text)'}}>{formatSum(item.amount)}</div>
+{isCredit&&hasSavings&&<div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--text3)',marginTop:2}}>to'liq: {formatSum(item.full)}</div>}
+{isCredit&&hasSavings&&<div style={{fontSize:10,color:'var(--accent)',marginTop:1}}>−{formatSum(item.savings)} tejov</div>}
+{!isCredit&&<div onClick={item.onToggle} style={{marginTop:6,width:28,height:28,borderRadius:'50%',border:'1.5px solid var(--border2)',display:'flex',alignItems:'center',justifyContent:'center',marginLeft:'auto',cursor:'pointer'}}><span style={{fontSize:10,color:'var(--text3)'}}>✓</span></div>}
+</div>
+{/* Pin button */}
+<button onClick={()=>togglePin(item.id,item.type)} style={{flexShrink:0,width:32,height:32,borderRadius:8,background:pin?'var(--accent-dim)':'var(--bg4)',border:`1px solid ${pin?'rgba(200,244,106,0.4)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,padding:0}} aria-label="Birinchiga chiqarish" title="Birinchiga chiqarish">📌</button>
 </div></div>);})}
 {unpaid.length===0&&<div style={{textAlign:'center',padding:'40px 20px',color:'var(--accent)',fontSize:18,fontFamily:'var(--font-serif)',fontStyle:'italic'}}>Barcha qarzlar to'landi! Tabriklaymiz 🎉</div>}
 </div>
-{paid.length>0&&(<div><div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:10}}>TO'LANGAN ({paid.length}) — ortga qaytarish uchun bosing</div><div style={{display:'flex',flexDirection:'column',gap:6}}>{paid.map(item=>{const isCredit=item.type==='credit';return(<div key={item.id} onClick={isCredit?undefined:item.onToggle} style={{background:'rgba(200,244,106,0.03)',border:'1px solid rgba(200,244,106,0.12)',borderRadius:'var(--radius-sm)',padding:'10px 16px',display:'flex',alignItems:'center',gap:12,opacity:0.6,cursor:isCredit?'default':'pointer',transition:'opacity 0.2s'}} onMouseEnter={e=>{if(!isCredit)e.currentTarget.style.opacity='1'}} onMouseLeave={e=>{if(!isCredit)e.currentTarget.style.opacity='0.6'}}><span style={{color:'var(--accent)',fontSize:14}}>✓</span><span style={{flex:1,fontSize:13,color:'var(--text3)',textDecoration:'line-through'}}>{item.name}</span>{!isCredit&&<span style={{fontSize:11,color:'var(--text3)'}}>↩ qaytarish</span>}<span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--text3)'}}>{formatSum(item.amount)}</span></div>)})}</div></div>)}
+{paid.length>0&&(<div><div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:10}}>TO'LANGAN ({paid.length}) — ortga qaytarish uchun bosing</div><div style={{display:'flex',flexDirection:'column',gap:6}}>{paid.map(item=>{const isCredit=item.type==='credit';return(<div key={`${item.type}:${item.id}`} onClick={isCredit?undefined:item.onToggle} style={{background:'rgba(200,244,106,0.03)',border:'1px solid rgba(200,244,106,0.12)',borderRadius:'var(--radius-sm)',padding:'10px 16px',display:'flex',alignItems:'center',gap:12,opacity:0.6,cursor:isCredit?'default':'pointer',transition:'opacity 0.2s'}} onMouseEnter={e=>{if(!isCredit)e.currentTarget.style.opacity='1'}} onMouseLeave={e=>{if(!isCredit)e.currentTarget.style.opacity='0.6'}}><span style={{color:'var(--accent)',fontSize:14}}>✓</span><span style={{flex:1,fontSize:13,color:'var(--text3)',textDecoration:'line-through'}}>{item.name}</span>{!isCredit&&<span style={{fontSize:11,color:'var(--text3)'}}>↩ qaytarish</span>}<span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--text3)'}}>{formatSum(item.amount)}</span></div>)})}</div></div>)}
 </div>);
 }
 
@@ -302,6 +373,7 @@ const doneSections=[creditDone,personalDone,adDone].filter(Boolean).length;
 return(<div style={{display:'flex',flexDirection:'column',gap:24,animation:'fadeUp 0.4s ease both'}}>
 <div><div style={{fontSize:12,color:'var(--text3)',letterSpacing:'0.1em',marginBottom:6}}>PROGRESS</div><h1 style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:30,fontWeight:400}}>{overallDone?'OZODLIK! 🎉':milestone(overallPct)}</h1></div>
 {!overallDone?(<div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'32px 20px'}}><BigRing pct={overallPct}/><div style={{textAlign:'center'}}><div style={{fontSize:15,fontWeight:600}}>Umumiy progress</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{formatSum(stats.totalPaid)} / {formatSum(stats.totalDebt)}</div></div></div>):(<div style={{background:'rgba(200,244,106,0.08)',border:'2px solid rgba(200,244,106,0.4)',borderRadius:'var(--radius-lg)',padding:'40px 20px',textAlign:'center'}}><div style={{fontSize:60,marginBottom:12}}>🎉</div><div style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:28,color:'var(--accent)'}}>Barcha qarzlar to'landi!</div><div style={{fontSize:14,color:'var(--text2)',marginTop:8}}>Endi siz ozod insonsiz. Alloh baraka bersin!</div></div>)}
+{!overallDone&&stats.totalSavings>0&&(<div style={{background:'linear-gradient(135deg, rgba(200,244,106,0.1), rgba(200,244,106,0.03))',border:'1px solid rgba(200,244,106,0.3)',borderRadius:'var(--radius-lg)',padding:'20px 22px',display:'flex',alignItems:'center',gap:16}}><span style={{fontSize:34}}>⚡</span><div><div style={{fontSize:13,color:'var(--text3)',marginBottom:2}}>Erta yopib tejagan summang</div><div style={{fontFamily:'var(--font-mono)',fontSize:24,fontWeight:700,color:'var(--accent)',lineHeight:1.1}}>{formatSum(stats.totalSavings)}</div><div style={{fontSize:12,color:'var(--text2)',marginTop:4}}>Qancha tez yopsang, shuncha ko'p foyda. Shoshil! 🔥</div></div></div>)}
 {doneSections>0&&<div style={{fontSize:11,color:'var(--text3)',letterSpacing:'0.1em',textAlign:'center'}}>↓ QO'SHIMCHA PROGRESSLAR</div>}
 <BarProgress label="💛 Insonlardan qarzlar" sublabel="Elchin, Bobir, Onam" pct={personal.pct} paid={personal.paid} total={personal.total} color="#FFC542" done={personalDone}/>
 <BarProgress label="🔵 Ad account ($) qarzlar" sublabel="Meta BM accounts" pct={ad.pct} paid={ad.paid} total={ad.total} color="#60A5FA" done={adDone}/>
@@ -323,11 +395,21 @@ const[paidCredits,setPaidCredits]=useLS('paidCredits',{});
 const[paidPersonal,setPaidPersonal]=useLS('paidPersonal',{});
 const[paidAd,setPaidAd]=useLS('paidAd',{});
 const[monthTargets,setMonthTargets]=useLS('monthTargets',{});
+const[principalOverride,setPrincipalOverride]=useLS('principalOverride',{});
+const[monthlyOverride,setMonthlyOverride]=useLS('monthlyOverride',{});
+const[pinned,setPinned]=useLS('pinned',null);
 const toggleCredit=(id,m)=>setPaidCredits(p=>({...p,[`${id}:${m}`]:!p[`${id}:${m}`]}));
 const togglePersonal=id=>setPaidPersonal(p=>({...p,[id]:!p[id]}));
 const toggleAd=id=>setPaidAd(p=>({...p,[id]:!p[id]}));
 const addTarget=(month,item)=>setMonthTargets(p=>{const list=p[month]||[];if(list.some(t=>t.id===item.id&&t.type===item.type))return p;return{...p,[month]:[...list,item]}});
 const removeTarget=(month,id,type)=>setMonthTargets(p=>({...p,[month]:(p[month]||[]).filter(t=>!(t.id===id&&t.type===type))}));
+const setPrincipal=(id,val)=>setPrincipalOverride(p=>{const n={...p};if(val===null||val==='')delete n[id];else n[id]=Number(val);return n});
+const setMonthly=(id,val)=>setMonthlyOverride(p=>{const n={...p};if(val===null||val==='')delete n[id];else n[id]=Number(val);return n});
+const togglePin=(id,type)=>setPinned(p=>(p&&p.id===id&&p.type===type)?null:{id,type});
+// === Credit helpers (principal override + monthly override) ===
+const monthlyAmt=(c,month)=>{const base=c.schedule.find(s=>s.month===month);if(!base)return 0;const ov=monthlyOverride[c.id];return(ov!=null&&!paidCredits[`${c.id}:${month}`])?ov:base.amount};
+const schedRemaining=c=>c.schedule.reduce((s,p)=>s+(paidCredits[`${c.id}:${p.month}`]?0:monthlyAmt(c,p.month)),0);
+const principalOf=c=>{const ov=principalOverride[c.id];return ov!=null?ov:schedRemaining(c)};
 const totalCreditDebt=bankCredits.reduce((s,c)=>s+c.totalSum,0);
 const paidCreditAmount=bankCredits.reduce((s,c)=>s+c.schedule.reduce((ss,p)=>ss+(paidCredits[`${c.id}:${p.month}`]?p.amount:0),0),0);
 const totalPersonalDebt=personalDebts.reduce((s,d)=>s+d.amount,0);
@@ -336,8 +418,10 @@ const totalAdDebt=adDebts.reduce((s,d)=>s+d.amountUZS,0);
 const paidAdAmount=adDebts.reduce((s,d)=>s+(paidAd[d.id]?d.amountUZS:0),0);
 const totalDebt=totalCreditDebt+totalPersonalDebt+totalAdDebt;
 const totalPaid=paidCreditAmount+paidPersonalAmount+paidAdAmount;
-const stats={totalDebt,totalPaid,totalRemaining:totalDebt-totalPaid,overallPct:Math.min(100,Math.round((totalPaid/totalDebt)*100)),credit:{total:totalCreditDebt,paid:paidCreditAmount,pct:Math.min(100,Math.round((paidCreditAmount/totalCreditDebt)*100))},personal:{total:totalPersonalDebt,paid:paidPersonalAmount,pct:Math.min(100,Math.round((paidPersonalAmount/totalPersonalDebt)*100))},ad:{total:totalAdDebt,paid:paidAdAmount,pct:Math.min(100,Math.round((paidAdAmount/totalAdDebt)*100))}};
-const sp={paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget};
+// Savings: scheduled remaining minus actual principal, across credits where principal is lower
+const totalSavings=bankCredits.reduce((s,c)=>{const diff=schedRemaining(c)-principalOf(c);return s+(diff>0?diff:0)},0);
+const stats={totalDebt,totalPaid,totalRemaining:totalDebt-totalPaid,totalSavings,overallPct:Math.min(100,Math.round((totalPaid/totalDebt)*100)),credit:{total:totalCreditDebt,paid:paidCreditAmount,pct:Math.min(100,Math.round((paidCreditAmount/totalCreditDebt)*100))},personal:{total:totalPersonalDebt,paid:paidPersonalAmount,pct:Math.min(100,Math.round((paidPersonalAmount/totalPersonalDebt)*100))},ad:{total:totalAdDebt,paid:paidAdAmount,pct:Math.min(100,Math.round((paidAdAmount/totalAdDebt)*100))}};
+const sp={paidCredits,paidPersonal,paidAd,toggleCredit,togglePersonal,toggleAd,stats,setPage,monthTargets,addTarget,removeTarget,principalOverride,monthlyOverride,setPrincipal,setMonthly,pinned,togglePin,monthlyAmt,schedRemaining,principalOf};
 return(<div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
 <header style={{position:'sticky',top:0,zIndex:100,background:'rgba(10,10,15,0.85)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)',padding:'0 20px',display:'flex',alignItems:'center',justifyContent:'space-between',height:56}}>
 <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:20}}>🔓</span><span style={{fontFamily:'var(--font-serif)',fontStyle:'italic',fontSize:17,letterSpacing:'0.01em'}}>Qarzdan Ozodlik</span></div>
